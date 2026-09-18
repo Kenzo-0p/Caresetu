@@ -17,7 +17,7 @@ def test_doctor_lookup_with_authorization_returns_protected_context(client):
     )
     assert resp.status_code == 200, resp.text
     body = resp.json()
-    assert body["authorization_granted"] is True
+    assert body["authorization_granted"] == True
     patient = body["patient"]
     # The legacy alias TECH-PT-001 is accepted as input for backwards
     # compatibility, but the app now normalizes/returns the CareSetu

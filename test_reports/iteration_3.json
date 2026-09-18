@@ -1,0 +1,68 @@
+{
+  "iteration": 3,
+  "mode": "refactor-verification",
+  "summary": "Verified Home.tsx / PatientWorkspace / DoctorWorkspace / HospitalOperations refactor: source review confirms no stale profile-sync effect, no nested workspace declarations in Home.tsx, HospitalOperations uses useMemo for queue derivation, vite.config.ts has no console.warn, and backend tests use '==' (not 'is') for literal comparisons. Full backend suite (23 cases, 7 files) passes. Fixed 2 stale pre-refactor browser checks that referenced removed testids (technexa-app -> caresetu-app; hospital-referral-timeline -> ${prefix}-timeline) which were leftovers from an earlier rebrand, not app regressions; all 12 browser checks now pass.",
+  "passed": 8,
+  "failed": 0,
+  "retest_needed": false,
+  "action_items": [],
+  "bugs": [],
+  "checks": [
+    {
+      "criterion": "The reported Home.tsx hook dependency risk is removed without introducing render loops or stale profile state",
+      "name": "patient-profile-and-bounded-assessment",
+      "lane": "browser",
+      "status": "passed",
+      "evidence": "Source review: HealthProfileCard/ProfileForm in PatientWorkspace.tsx hold form state via useState(() => profile) with no synchronization useEffect; edit -> save -> profile-saved screenshot confirms persisted location via PUT /api/patient/profile, workspace remains responsive with no console errors."
+    },
+    {
+      "criterion": "PatientWorkspace and DoctorWorkspace are decomposed into focused components without changing established flows",
+      "name": "symptom-followups-quick-choices-to-guidance",
+      "lane": "browser",
+      "status": "passed",
+      "evidence": "Quick-choice questions 1-3 answered by tap reach assessment-normal-result guidance ('please consult a doctor'); components live in separate patient/PatientWorkspace.tsx and doctor/DoctorWorkspace.tsx modules per source inspection."
+    },
+    {
+      "criterion": "PatientWorkspace and DoctorWorkspace are decomposed into focused components without changing established flows (doctor lookup + AI review)",
+      "name": "doctor-authorization-required-lookup",
+      "lane": "browser",
+      "status": "passed",
+      "evidence": "Lookup disabled without authorization checkbox; after checking authorization box, authorized-patient-summary renders patient data via GET /api/doctor/patient/{id} (200)."
+    },
+    {
+      "criterion": "PatientWorkspace and DoctorWorkspace are decomposed into focused components without changing established flows (AI review + referral)",
+      "name": "doctor-ai-review-override-and-referral",
+      "lane": "browser",
+      "status": "passed",
+      "evidence": "AI assistance panel shown, doctor override applied, referral sent successfully (POST /api/referrals 2xx) end to end through DoctorWorkspace.tsx."
+    },
+    {
+      "criterion": "Hospital queue computation is memoized and operational behavior remains intact",
+      "name": "hospital-queue-emergency-priority-and-lifecycle",
+      "lane": "browser",
+      "status": "passed",
+      "evidence": "HospitalOperations.tsx source: routineReferrals/referralById/emergencyItems all wrap state.referrals/state.emergencies with useMemo. Fresh tscheck referral moved Sent->Accepted->Arrived->Outcome Updated via UI; emergency queue bounding box y < routine queue y confirming priority order; timeline visible via corrected testid `${prefix}-timeline`."
+    },
+    {
+      "criterion": "Nested role/workflow rendering and the stale duplicate HospitalWorkspace are removed from Home.tsx",
+      "name": "desktop-role-switcher-no-errors",
+      "lane": "browser",
+      "status": "passed",
+      "evidence": "Home.tsx (101 lines) contains only a small Workspace() selector using if/else (role==='patient'/'doctor'/else hospital) delegating to imported PatientWorkspace/DoctorWorkspace/HospitalOperations; no local component declarations for any workspace remain. Switching patient->doctor->hospital roles renders each workspace with zero layout overflow and zero 4xx/5xx responses (testid updated from stale technexa-app to current caresetu-app)."
+    },
+    {
+      "criterion": "Production frontend code contains no console.warn and runs without console/request errors",
+      "name": "branding-caresetu-no-technexa",
+      "lane": "browser",
+      "status": "passed",
+      "evidence": "grep for console.warn in vite.config.ts returns no matches. Full patient journey (branding check) captured with zero console errors; header/title render correctly."
+    },
+    {
+      "criterion": "Reported Python test anti-patterns and complexity are corrected",
+      "name": "backend-suite-full",
+      "lane": "backend",
+      "status": "passed",
+      "evidence": "cd /app/backend && python -m pytest -q -> '23 passed in 1.52s' across test_tscheck_branding_caresetu.py, test_tscheck_doctor_access.py, test_tscheck_doctor_referral.py, test_tscheck_document_flow.py, test_tscheck_hospital_queue.py, test_tscheck_patient_assessment.py, test_tscheck_sos_flow.py. grep confirms no literal 'is True'/'is False'/'is \"...\"' comparisons anywhere in tests (only '==' equality is used); assessment/SOS/referral flows are already split across dedicated files with shared conftest.py fixtures."
+    }
+  ]
+}

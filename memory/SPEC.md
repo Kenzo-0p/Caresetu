@@ -21,3 +21,6 @@ Mongo collections: `patient_profiles`, `assessments`, `documents`, `referrals`, 
 
 ## Safety boundaries
 No autonomous diagnosis, prescription, real ambulance, beds, availability, or live clinical integration. Deterministic rules control demo routing. AI/OCR outputs remain separate from verified information. Emergency access is visibly labeled and auditable in the demo state.
+
+## Frontend structure
+The route page owns only the app shell and role selection. Patient, doctor, and hospital workflows are isolated components using shared typed domain models and shared facility/timeline primitives; hospital queue derivations are memoized.

@@ -1,59 +1,50 @@
-"""Criterion: SOS records simulated dispatch immediately, optional info does
-not block destination choices, and selecting a facility notifies the hospital
-and creates an INCOMING EMERGENCY PATIENT queue item (referral)."""
+"""SOS dispatch, optional context, destination, and hospital queue checks."""
 
 import uuid
 
 
+def _start_sos(client) -> dict:
+    suffix = uuid.uuid4().hex[:8]
+    response = client.post("/sos", json={"patient_id": "demo-patient-001", "note": f"tscheck-sos-{suffix}"})
+    assert response.status_code == 200, response.text
+    return response.json()
+
+
+def _select_facility(client, sos_id: str) -> dict:
+    response = client.post("/sos/select-facility", json={"sos_id": sos_id, "facility_id": "facility-a"})
+    assert response.status_code == 200, response.text
+    return response.json()
+
+
 def test_sos_immediate_simulated_dispatch(client):
-    resp = client.post(
-        "/sos", json={"patient_id": "demo-patient-001", "note": ""}
-    )
-    assert resp.status_code == 200, resp.text
-    body = resp.json()
+    body = _start_sos(client)
     assert body["event"]["dispatch_status"] == "SIMULATED_DISPATCH"
     assert "Emergency action initiated" in body["message"]
     assert len(body["facilities"]) > 0
-    assert all(f["emergency_ready"] for f in body["facilities"])
+    assert all(facility["emergency_ready"] for facility in body["facilities"])
 
 
-def test_sos_optional_context_then_facility_selection_creates_referral(client):
-    suffix = uuid.uuid4().hex[:8]
-    resp = client.post(
-        "/sos", json={"patient_id": "demo-patient-001", "note": f"tscheck-sos-{suffix}"}
-    )
-    assert resp.status_code == 200, resp.text
-    sos_id = resp.json()["event"]["id"]
+def test_sos_optional_context_is_saved(client):
+    body = _start_sos(client)
+    response = client.post(f"/sos/{body['event']['id']}/context", json={"note": "extra emergency context"})
+    assert response.status_code == 200, response.text
+    assert response.json()["note"] == "extra emergency context"
 
-    # Optional context update does not block flow
-    resp2 = client.post(
-        f"/sos/{sos_id}/context", json={"note": f"tscheck-sos-{suffix} extra context"}
-    )
-    assert resp2.status_code == 200, resp2.text
 
-    # Selecting destination facility
-    resp3 = client.post(
-        "/sos/select-facility", json={"sos_id": sos_id, "facility_id": "facility-a"}
-    )
-    assert resp3.status_code == 200, resp3.text
-    body3 = resp3.json()
-    assert "Hospital notified" in body3["message"]
-    assert body3["event"]["status"] == "Hospital Alerted"
-    assert body3["event"]["selected_facility_name"] == "Harborview Medical Centre"
-    referral_id = body3["event"]["referral_id"]
-    assert referral_id
-
-    # Verify referral surfaces in hospital queue as emergency
-    resp4 = client.get("/hospital/queue")
-    assert resp4.status_code == 200, resp4.text
-    matching = [r for r in resp4.json()["referrals"] if r["id"] == referral_id]
+def test_sos_facility_selection_creates_emergency_referral(client):
+    body = _start_sos(client)
+    selected = _select_facility(client, body["event"]["id"])
+    assert "Hospital notified" in selected["message"]
+    assert selected["event"]["status"] == "Hospital Alerted"
+    assert selected["event"]["selected_facility_name"] == "Harborview Medical Centre"
+    referral_id = selected["event"]["referral_id"]
+    queue_response = client.get("/hospital/queue")
+    assert queue_response.status_code == 200, queue_response.text
+    matching = [referral for referral in queue_response.json()["referrals"] if referral["id"] == referral_id]
     assert len(matching) == 1
-    assert matching[0]["emergency"] is True
+    assert matching[0]["emergency"] == True
 
 
 def test_sos_unknown_event_or_facility_returns_404(client):
-    resp = client.post(
-        "/sos/select-facility",
-        json={"sos_id": "tscheck-nonexistent-sos", "facility_id": "facility-a"},
-    )
-    assert resp.status_code == 404, resp.text
+    response = client.post("/sos/select-facility", json={"sos_id": "tscheck-nonexistent-sos", "facility_id": "facility-a"})
+    assert response.status_code == 404, response.text

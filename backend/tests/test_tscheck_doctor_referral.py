@@ -5,6 +5,32 @@ that becomes visible in the hospital queue."""
 import uuid
 
 
+def _create_referral(client, reason: str, suffix: str) -> dict:
+    response = client.post(
+        "/referrals",
+        json={
+            "patient_id": "demo-patient-001",
+            "facility_id": "facility-a",
+            "reason": reason,
+            "care_requirement": "Cardiology review",
+            "urgency": "Routine",
+            "symptoms": "tscheck chest discomfort",
+            "findings": "Stable vitals",
+            "ai_assessment": "Deterministic demo suggestion: cardiology review",
+            "doctor_decision": f"tscheck override: sending to cardiology directly ({suffix})",
+            "emergency": False,
+        },
+    )
+    assert response.status_code == 200, response.text
+    return response.json()
+
+
+def _find_referral(client, referral_id: str) -> list[dict]:
+    response = client.get("/hospital/queue")
+    assert response.status_code == 200, response.text
+    return [item for item in response.json()["referrals"] if item["id"] == referral_id]
+
+
 def test_ai_assistance_is_labeled_deterministic_demo(client):
     resp = client.post(
         "/doctor/assessment-assistance",
@@ -34,33 +60,13 @@ def test_facility_match_returns_capability_ranked_facilities(client):
 def test_doctor_creates_referral_visible_in_hospital_queue(client):
     suffix = uuid.uuid4().hex[:8]
     reason = f"tscheck-referral-{suffix} routine cardiology follow-up"
-    resp = client.post(
-        "/referrals",
-        json={
-            "patient_id": "demo-patient-001",
-            "facility_id": "facility-a",
-            "reason": reason,
-            "care_requirement": "Cardiology review",
-            "urgency": "Routine",
-            "symptoms": "tscheck chest discomfort",
-            "findings": "Stable vitals",
-            "ai_assessment": "Deterministic demo suggestion: cardiology review",
-            "doctor_decision": f"tscheck override: sending to cardiology directly ({suffix})",
-            "emergency": False,
-        },
-    )
-    assert resp.status_code == 200, resp.text
-    referral = resp.json()
+    referral = _create_referral(client, reason, suffix)
     assert referral["reason"] == reason
     assert referral["facility_name"] == "Harborview Medical Centre"
     assert referral["status"] == "Sent"
     labels = [e["label"] for e in referral["events"]]
     assert labels == ["Created", "Sent", "Received"]
 
-    # Visible in hospital queue
-    resp2 = client.get("/hospital/queue")
-    assert resp2.status_code == 200, resp2.text
-    queue = resp2.json()
-    matching = [r for r in queue["referrals"] if r["id"] == referral["id"]]
+    matching = _find_referral(client, referral["id"])
     assert len(matching) == 1
     assert matching[0]["reason"] == reason

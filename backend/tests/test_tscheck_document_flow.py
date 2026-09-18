@@ -18,7 +18,7 @@ def test_readable_document_upload_needs_verification_then_verify(client):
     assert resp.status_code == 200, resp.text
     doc = resp.json()
     assert doc["filename"] == filename
-    assert doc["original_available"] is True
+    assert doc["original_available"] == True
     assert doc["review_status"] == "needs_verification"
     assert len(doc["extracted_fields"]) > 0
 
@@ -38,7 +38,7 @@ def test_unreadable_document_upload_safe_failure_state(client):
     doc = resp.json()
     assert doc["review_status"] == "unreadable"
     assert doc["extracted_fields"] == []
-    assert doc["original_available"] is True
+    assert doc["original_available"] == True
 
     # Unreadable documents cannot be verified (400)
     resp2 = client.post(f"/documents/{doc['id']}/verify")
