@@ -1,0 +1,110 @@
+{
+  "iteration": 1,
+  "mode": "generate",
+  "summary": "18 backend pytest cases (6 files) and 8 named browser checks written and executed. All passed.",
+  "passed": 14,
+  "failed": 0,
+  "retest_needed": false,
+  "action_items": [],
+  "bugs": [],
+  "checks": [
+    {
+      "criterion": "Patient can complete/edit the health profile and run the bounded normal symptom assessment one question at a time",
+      "name": "test_tscheck_patient_assessment.py",
+      "lane": "backend",
+      "status": "passed",
+      "evidence": "PUT /api/patient/profile 200; POST /api/assessment/session 200 (question_index=0/3); 3x POST /api/assessment/message progressing question_index 1,2,3 with final guidance == 'Based on your answers, please consult a doctor.', outcome=NORMAL; POST unknown session -> 404"
+    },
+    {
+      "criterion": "Patient can complete/edit the health profile and run the bounded normal symptom assessment one question at a time",
+      "name": "patient-profile-and-bounded-assessment",
+      "lane": "browser",
+      "status": "passed",
+      "evidence": "Edited profile location field, saved and confirmed persisted value; ran 3-question assessment via UI, final panel shows exact text 'Based on your answers, please consult a doctor.'"
+    },
+    {
+      "criterion": "Medical document flow preserves originals and visibly separates unverified extraction from trusted history",
+      "name": "test_tscheck_document_flow.py",
+      "lane": "backend",
+      "status": "passed",
+      "evidence": "POST /api/documents/upload (pdf) 200 review_status=needs_verification, original_available=true; POST verify -> 200 verified; unreadable filename -> review_status=unreadable, extracted_fields=[], verify -> 400; unsupported content-type -> 415"
+    },
+    {
+      "criterion": "Medical document flow preserves originals and visibly separates unverified extraction from trusted history",
+      "name": "document-upload-and-verification",
+      "lane": "browser",
+      "status": "passed",
+      "evidence": "Uploaded readable PDF -> badge 'AI extracted — needs verification', clicked Review & verify -> badge becomes 'verified'; uploaded filename containing 'unreadable' -> badge 'Could not reliably extract information from this document.'"
+    },
+    {
+      "criterion": "Doctor normal access requires authorization and provides protected patient context",
+      "name": "test_tscheck_doctor_access.py",
+      "lane": "backend",
+      "status": "passed",
+      "evidence": "POST /api/doctor/patients/lookup without authorization_granted -> 403; with authorization_granted=true + TECH-PT-001 -> 200 with patient allergies/medicines/history; unknown identifier -> 404"
+    },
+    {
+      "criterion": "Doctor normal access requires authorization and provides protected patient context",
+      "name": "doctor-authorization-required-lookup",
+      "lane": "browser",
+      "status": "passed",
+      "evidence": "Find patient button disabled until authorization checkbox checked; after checking + TECH-PT-001 lookup, summary shows Maya Sharma, 29, Penicillin allergy, Salbutamol medicine, history entry"
+    },
+    {
+      "criterion": "Doctor can review bounded assistance, override it, match facilities by capabilities, and send a referral",
+      "name": "test_tscheck_doctor_referral.py",
+      "lane": "backend",
+      "status": "passed",
+      "evidence": "POST /api/doctor/assessment-assistance -> mode=deterministic_demo, review mentions clinician confirmation required; GET /api/facilities/match ROUTINE and EMERGENCY return capability-filtered lists; POST /api/referrals -> 200 with Created/Sent/Received events, then GET /api/hospital/queue shows the new referral"
+    },
+    {
+      "criterion": "Doctor can review bounded assistance, override it, match facilities by capabilities, and send a referral",
+      "name": "doctor-ai-review-override-and-referral",
+      "lane": "browser",
+      "status": "passed",
+      "evidence": "AI-assisted assessment card shows 'DETERMINISTIC DEMO ADAPTER' badge; Override assistance button sets doctor-authored override text and shows 'Doctor decision authoritative' badge; selected facility among 3 capability-tagged cards; Confirm & send referral shows success panel with new referral id"
+    },
+    {
+      "criterion": "Hospital combined operations queue prioritizes emergency items and supports valid lifecycle actions",
+      "name": "test_tscheck_hospital_queue.py",
+      "lane": "backend",
+      "status": "passed",
+      "evidence": "POST /api/referrals/{id}/status Accepted->Arrived->Outcome Updated all 200 with growing event timeline; Rejected from Sent -> 200; invalid Sent->Arrived jump -> 409; SOS event appears in GET /api/hospital/queue emergencies with dispatch_status SIMULATED_DISPATCH"
+    },
+    {
+      "criterion": "Hospital combined operations queue prioritizes emergency items and supports valid lifecycle actions",
+      "name": "hospital-queue-emergency-priority-and-lifecycle",
+      "lane": "browser",
+      "status": "passed",
+      "evidence": "Emergency queue section bounding box y-position above normal referral queue section; fresh referral progressed Accept->Mark arrived->Outcome saved with visible timeline; separate fresh referral exposed Reject/Redirect buttons while Sent and Reject transitioned it to Rejected"
+    },
+    {
+      "criterion": "SOS records simulated dispatch immediately before optional questions and continues through destination and hospital alert",
+      "name": "test_tscheck_sos_flow.py",
+      "lane": "backend",
+      "status": "passed",
+      "evidence": "POST /api/sos -> 200 dispatch_status=SIMULATED_DISPATCH, message contains 'Emergency action initiated'; POST /api/sos/{id}/context (optional note) -> 200 non-blocking; POST /api/sos/select-facility -> 200 status=Hospital Alerted with referral_id, visible in GET /api/hospital/queue as emergency=true; unknown ids -> 404"
+    },
+    {
+      "criterion": "SOS records simulated dispatch immediately before optional questions and continues through destination and hospital alert",
+      "name": "sos-simulated-dispatch-and-hospital-alert",
+      "lane": "browser",
+      "status": "passed",
+      "evidence": "Clicking SOS immediately shows 'EMERGENCY ACTION INITIATED' panel with SIMULATED_DISPATCH badge and real-emergency disclaimer; destination choice available immediately; selecting facility shows 'Hospital notified' state; switching to Hospital Operations shows new 'INCOMING EMERGENCY PATIENT' card"
+    },
+    {
+      "criterion": "Safety and simulation boundaries remain explicit throughout the app",
+      "name": "safety-and-simulation-labels-visible",
+      "lane": "browser",
+      "status": "passed",
+      "evidence": "Header shows 'DETERMINISTIC DEMO ADAPTERS' and 'Demo environment · no real clinical or ambulance service connected'; doctor view shows 'Normal access requires authorization'; SOS panel shows demo-simulation/real-emergency disclaimer; hospital emergency card shows 'Break-glass access is limited and audited'"
+    },
+    {
+      "criterion": "Public desktop experience is usable without console or failed-request errors",
+      "name": "desktop-role-switcher-no-errors",
+      "lane": "browser",
+      "status": "passed",
+      "evidence": "At 1280x720, patient/doctor/hospital workspaces all rendered with no horizontal scroll overflow (scrollWidth<=clientWidth), zero console errors (strict_console=true), and zero HTTP 4xx/5xx responses observed while switching roles"
+    }
+  ]
+}

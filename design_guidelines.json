@@ -1,0 +1,131 @@
+{
+  "project_name": "TECHNEXA 2026 Smart Healthcare MVP",
+  "theme_strategy": {
+    "default_mode": "light",
+    "mode_toggle_supported": true,
+    "archetype": "ORGANIC & CLINICAL PRECISION",
+    "tone": "Calm, trustworthy, modern clinical coordinator, reassuring for patients and dense/tactical for providers"
+  },
+  "typography": {
+    "heading_font": "Plus Jakarta Sans Variable, Manrope, sans-serif",
+    "body_font": "Geist Variable, Inter, sans-serif",
+    "mono_font": "IBM Plex Mono, JetBrains Mono, monospace",
+    "hierarchy": {
+      "h1": "text-3xl sm:text-4xl lg:text-5xl font-bold tracking-tight leading-tight",
+      "h2": "text-2xl sm:text-3xl font-semibold tracking-tight",
+      "h3": "text-xl sm:text-2xl font-medium tracking-snug",
+      "h4": "text-lg font-medium",
+      "body_large": "text-lg leading-relaxed",
+      "body_main": "text-base leading-relaxed",
+      "body_small": "text-sm text-muted-foreground",
+      "caption": "text-xs font-mono tracking-wider uppercase"
+    },
+    "forbidden_fonts": ["Space Grotesk"]
+  },
+  "colors": {
+    "light": {
+      "background": "#F8FAFC",
+      "surface": "#FFFFFF",
+      "surface_elevated": "#F1F5F9",
+      "border": "#E2E8F0",
+      "foreground": "#0F172A",
+      "muted_foreground": "#64748B",
+      "primary": "#0D9488",
+      "primary_foreground": "#FFFFFF",
+      "secondary": "#0284C7",
+      "secondary_foreground": "#FFFFFF",
+      "accent": "#0F766E",
+      "emergency_red": "#DC2626",
+      "emergency_bg": "#FEF2F2",
+      "emergency_border": "#FCA5A5",
+      "warning": "#D97706",
+      "success": "#16A34A"
+    },
+    "dark": {
+      "background": "#0B132B",
+      "surface": "#1C2541",
+      "surface_elevated": "#2F3E46",
+      "border": "#334155",
+      "foreground": "#F8FAFC",
+      "muted_foreground": "#94A3B8",
+      "primary": "#14B8A6",
+      "primary_foreground": "#0F172A",
+      "secondary": "#38BDF8",
+      "secondary_foreground": "#0F172A",
+      "accent": "#2DD4BF",
+      "emergency_red": "#EF4444",
+      "emergency_bg": "#450A0A",
+      "emergency_border": "#991B1B",
+      "warning": "#F59E0B",
+      "success": "#22C55E"
+    },
+    "forbidden_colors": ["#1B93A4", "#7351B7"]
+  },
+  "exact_required_copy": [
+    "Let’s understand your symptoms. I’ll ask a few questions.",
+    "Based on your answers, please consult a doctor.",
+    "AI-assisted assessment",
+    "Suitable Facilities for This Care Requirement",
+    "AI extracted — needs verification",
+    "Could not reliably extract information from this document.",
+    "INCOMING EMERGENCY PATIENT"
+  ],
+  "status_timeline_sequence": [
+    "Created",
+    "Sent",
+    "Received",
+    "Accepted / Rejected / Redirected",
+    "Arrived",
+    "Outcome Updated"
+  ],
+  "roles_and_views": {
+    "patient": {
+      "layout": "Mobile-first single column, calm, reassuring, low cognitive load",
+      "key_features": [
+        "Patient Profile & History",
+        "Interactive Symptom Assessment (bounded one-at-a-time questions)",
+        "Doctor Visit Guidance & Referral status tracking",
+        "Instant Emergency SOS Trigger with ambulance simulation",
+        "Document OCR upload & verification preview"
+      ]
+    },
+    "doctor_health_worker": {
+      "layout": "Tablet & Desktop responsive dashboard with progressive disclosure",
+      "key_features": [
+        "Secure Patient Lookup (with QR / Authorization Code)",
+        "Profile & Clinical History Review",
+        "AI-Assisted Assessment with explicit Doctor Override",
+        "Capability-Aware Facility Matching & Structured Referral creation"
+      ]
+    },
+    "hospital_doctor_admin": {
+      "layout": "Combined Hospital Operations Queue, dense data table & triage cards",
+      "key_features": [
+        "Emergency Fast-Lane Queue (Bypasses AI loading)",
+        "Accept / Reject / Redirect / Mark Arrived / Update Outcome",
+        "Break-glass Patient Summary with auditable event logs",
+        "Facility Capacity & Specialization Controls"
+      ]
+    }
+  },
+  "component_patterns": {
+    "sos_emergency_banner": "Instant dark red pulsing header banner with sound/visual cue. Shows 'INCOMING EMERGENCY PATIENT' and triggers immediate ambulance simulation.",
+    "symptom_stepper": "One-at-a-time question container with progress indicator, smooth entrance animations, and explicit disclaimer banner.",
+    "ai_assessment_card": "Distinct card with amber/teal badge 'AI-assisted assessment', side-by-side doctor clinical override inputs, and full editability.",
+    "ocr_upload_card": "Document dropzone showing 'AI extracted — needs verification' pill with side-by-side original image view and editable fields, or 'Could not reliably extract information from this document.' alert state.",
+    "referral_timeline": "6-stage horizontal/vertical stepper showing: Created -> Sent -> Received -> Accepted/Rejected/Redirected -> Arrived -> Outcome Updated with audit timestamps."
+  },
+  "image_urls": {
+    "doctor_consultation": "https://images.pexels.com/photos/39192383/pexels-photo-39192383.jpeg?auto=compress&cs=tinysrgb&dpr=2&h=650&w=940",
+    "female_doctor": "https://images.unsplash.com/photo-1638202993928-7267aad84c31?crop=entropy&cs=srgb&fm=jpg&q=85",
+    "clinical_setting": "https://images.unsplash.com/photo-1625134673337-519d4d10b313?crop=entropy&cs=srgb&fm=jpg&q=85",
+    "doctor_portrait": "https://images.pexels.com/photos/32115905/pexels-photo-32115905.jpeg?auto=compress&cs=tinysrgb&dpr=2&h=650&w=940"
+  },
+  "general_ui_ux_guidelines": [
+    "All interactive elements and key metric containers MUST include a kebab-case data-testid attribute (e.g. data-testid='sos-button', data-testid='symptom-next-btn').",
+    "Never rely on default browser transparent backgrounds in overlays, dropdowns, or floating headers.",
+    "Use exact copy strings as specified in requirements for safety disclaimers and status callouts.",
+    "Emergency actions (SOS) must bypass long AI loading and immediately show simulated ambulance dispatch and break-glass summary.",
+    "Ensure UI files use React 19 / JSX / JS standards as configured in the skeleton project."
+  ]
+}
