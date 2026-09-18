@@ -1,50 +1,33 @@
-from datetime import datetime, timezone
+from datetime import datetime
 from typing import Literal
 import uuid
 
-from pydantic import BaseModel, ConfigDict, Field
+from pydantic import BaseModel, Field
+
+from lib.dates import now_utc
+from models.identity import PatientProfile, ProfileUpdate
 
 
-def utc_now() -> datetime:
-    return datetime.now(timezone.utc)
+ReferralStatus = Literal[
+    "DRAFT",
+    "CONFIRMED",
+    "SENT",
+    "RECEIVED",
+    "ACCEPTED",
+    "ARRIVED",
+    "COMPLETED",
+    "REJECTED",
+    "REDIRECTED",
+    "CANCELLED",
+]
 
 
 class Event(BaseModel):
     label: str
-    timestamp: datetime = Field(default_factory=utc_now)
+    timestamp: datetime = Field(default_factory=now_utc)
     detail: str | None = None
-
-
-class PatientProfile(BaseModel):
-    model_config = ConfigDict(extra="ignore")
-
-    id: str = "demo-patient-001"
-    secure_id: str = "CARE-PT-001"
-    name: str = "Maya Sharma"
-    age: int = 29
-    gender: str = "Female"
-    mobile: str = "+91 98765 43210"
-    location: str = "Bengaluru, Karnataka"
-    address: str = "14 Lake View Road, Bengaluru"
-    emergency_contact: str = "Arjun Sharma · +91 98765 40001"
-    blood_group: str = "O+"
-    existing_conditions: list[str] = Field(default_factory=lambda: ["Mild asthma"])
-    allergies: list[str] = Field(default_factory=lambda: ["Penicillin"])
-    medicines: list[str] = Field(default_factory=lambda: ["Salbutamol inhaler · as needed"])
-    previous_history: list[str] = Field(default_factory=lambda: ["Asthma review · Jan 2026"])
-    profile_complete: bool = True
-
-
-class ProfileUpdate(BaseModel):
-    name: str = Field(min_length=2, max_length=100)
-    age: int = Field(ge=0, le=120)
-    mobile: str = Field(min_length=5, max_length=30)
-    location: str = Field(min_length=2, max_length=120)
-    emergency_contact: str = Field(min_length=2, max_length=120)
-    existing_conditions: list[str] = Field(default_factory=list)
-    allergies: list[str] = Field(default_factory=list)
-    medicines: list[str] = Field(default_factory=list)
-    previous_history: list[str] = Field(default_factory=list)
+    actor_user_id: str | None = None
+    actor_role: str | None = None
 
 
 class AssessmentSessionCreate(BaseModel):
@@ -58,14 +41,14 @@ class AssessmentMessage(BaseModel):
 
 class AssessmentSession(BaseModel):
     id: str = Field(default_factory=lambda: str(uuid.uuid4()))
-    patient_id: str = "demo-patient-001"
+    patient_id: str
     symptoms: str
     answers: list[str] = Field(default_factory=list)
     question_index: int = 0
     status: Literal["active", "completed"] = "active"
     outcome: str | None = None
     guidance: str | None = None
-    created_at: datetime = Field(default_factory=utc_now)
+    created_at: datetime = Field(default_factory=now_utc)
 
 
 class AssessmentMessageResponse(BaseModel):
@@ -76,32 +59,24 @@ class AssessmentMessageResponse(BaseModel):
     complete: bool
     outcome: str | None = None
     guidance: str | None = None
-    review: str = "deterministic demo pathway"
-
-
-class DoctorLookupRequest(BaseModel):
-    identifier: str = Field(min_length=3, max_length=120)
-    authorization_granted: bool = False
-
-
-class DoctorLookupResponse(BaseModel):
-    patient: PatientProfile
-    authorization_granted: bool
-    access_note: str
+    urgency: Literal["ROUTINE", "URGENT", "EMERGENCY"] = "ROUTINE"
+    review: str = "deterministic safety-reviewed pathway"
 
 
 class DoctorAssessmentRequest(BaseModel):
+    access_request_id: str
     symptoms: str = Field(min_length=3, max_length=2000)
     findings: str = Field(default="", max_length=2000)
+    vitals: str = Field(default="", max_length=1000)
 
 
 class DoctorAssessment(BaseModel):
-    mode: Literal["deterministic_demo"] = "deterministic_demo"
-    urgency: str = "Routine"
+    mode: Literal["deterministic_fallback"] = "deterministic_fallback"
+    urgency: str = "ROUTINE"
     care_requirement: str = "Primary care review"
     summary: str
     suggested_capabilities: list[str]
-    review: str = "AI-assisted support only — clinician confirmation required"
+    review: str = "AI/rule-assisted support only — clinician confirmation required"
 
 
 class Facility(BaseModel):
@@ -117,26 +92,42 @@ class Facility(BaseModel):
 class FacilityMatchResponse(BaseModel):
     requirement: str
     facilities: list[Facility]
-    note: str = "Capability match first; fixed demo order used as tie-breaker."
+    note: str = "Mandatory capabilities first; location and fixed demo order are tie-breakers."
 
 
 class ReferralCreate(BaseModel):
-    patient_id: str = "demo-patient-001"
+    access_request_id: str
     facility_id: str
     reason: str = Field(min_length=3, max_length=500)
     care_requirement: str = "Primary care review"
-    urgency: str = "Routine"
-    symptoms: str = ""
-    findings: str = ""
-    ai_assessment: str = ""
+    urgency: str = "ROUTINE"
+    symptoms: str = Field(default="", max_length=2000)
+    findings: str = Field(default="", max_length=2000)
+    vitals: str = Field(default="", max_length=1000)
+    ai_assessment: str = Field(default="", max_length=2000)
     doctor_decision: str = Field(min_length=3, max_length=1000)
-    emergency: bool = False
+    idempotency_key: str = Field(min_length=8, max_length=100)
+
+
+class ReferralPatientSnapshot(BaseModel):
+    age: int
+    gender: str
+    blood_group: str | None = None
+    existing_conditions: list[str] = Field(default_factory=list)
+    allergies: list[str] = Field(default_factory=list)
+    medicines: list[str] = Field(default_factory=list)
 
 
 class Referral(BaseModel):
-    id: str = Field(default_factory=lambda: f"REF-{uuid.uuid4().hex[:8].upper()}")
+    id: str = Field(default_factory=lambda: f"REF-{uuid.uuid4().hex[:10].upper()}")
+    idempotency_key: str
     patient_id: str
-    patient_name: str = "Maya Sharma"
+    patient_code: str
+    patient_name: str
+    patient_summary: ReferralPatientSnapshot
+    access_request_id: str | None = None
+    referring_user_id: str | None = None
+    referring_provider_name: str = ""
     facility_id: str
     facility_name: str
     reason: str
@@ -144,50 +135,64 @@ class Referral(BaseModel):
     urgency: str
     symptoms: str = ""
     findings: str = ""
+    vitals: str = ""
     ai_assessment: str = ""
     doctor_decision: str
-    status: str = "Sent"
+    status: ReferralStatus = "DRAFT"
     emergency: bool = False
-    created_at: datetime = Field(default_factory=utc_now)
+    created_at: datetime = Field(default_factory=now_utc)
+    updated_at: datetime = Field(default_factory=now_utc)
     events: list[Event] = Field(default_factory=list)
     outcome: str | None = None
 
 
-class ReferralStatusUpdate(BaseModel):
-    status: Literal["Accepted", "Rejected", "Redirected", "Arrived", "Outcome Updated"]
-    outcome: str | None = None
-    detail: str | None = None
+class ReferralActionRequest(BaseModel):
+    status: Literal["ACCEPTED", "REJECTED", "REDIRECTED", "ARRIVED", "COMPLETED", "CANCELLED"]
+    outcome: str | None = Field(default=None, max_length=2000)
+    reason: str | None = Field(default=None, max_length=1000)
 
 
 class Document(BaseModel):
     id: str = Field(default_factory=lambda: str(uuid.uuid4()))
-    patient_id: str = "demo-patient-001"
+    patient_id: str
     filename: str
+    storage_name: str
     content_type: str
     size_bytes: int
-    review_status: Literal["processing", "needs_verification", "unreadable", "verified"] = "processing"
+    review_status: Literal["processing", "needs_verification", "unreadable", "verified", "rejected"] = "processing"
     extracted_fields: list[str] = Field(default_factory=list)
     original_available: bool = True
-    created_at: datetime = Field(default_factory=utc_now)
+    extraction_mode: str = "deterministic_mock"
+    review_actor_user_id: str | None = None
+    reviewed_at: datetime | None = None
+    created_at: datetime = Field(default_factory=now_utc)
+
+
+class DocumentReviewRequest(BaseModel):
+    access_request_id: str
+    decision: Literal["verified", "rejected"]
 
 
 class SOSCreate(BaseModel):
-    patient_id: str = "demo-patient-001"
     note: str = Field(default="", max_length=500)
+    idempotency_key: str = Field(min_length=8, max_length=100)
 
 
 class EmergencyEvent(BaseModel):
-    id: str = Field(default_factory=lambda: f"SOS-{uuid.uuid4().hex[:8].upper()}")
-    patient_id: str = "demo-patient-001"
-    patient_name: str = "Maya Sharma"
-    status: str = "Ambulance Initiated"
+    id: str = Field(default_factory=lambda: f"SOS-{uuid.uuid4().hex[:10].upper()}")
+    idempotency_key: str
+    patient_id: str
+    patient_code: str
+    patient_name: str
+    status: str = "AMBULANCE_INITIATED"
     dispatch_status: str = "SIMULATED_DISPATCH"
     note: str = ""
     selected_facility_id: str | None = None
     selected_facility_name: str | None = None
     referral_id: str | None = None
-    created_at: datetime = Field(default_factory=utc_now)
-    audit_note: str = "Emergency break-glass access recorded for demo review."
+    created_at: datetime = Field(default_factory=now_utc)
+    updated_at: datetime = Field(default_factory=now_utc)
+    audit_note: str = "Emergency action and access events are audit logged."
 
 
 class SOSResponse(BaseModel):
@@ -205,8 +210,8 @@ class SOSContextUpdate(BaseModel):
     note: str = Field(min_length=1, max_length=500)
 
 
-class DemoState(BaseModel):
-    profile: PatientProfile
+class DashboardState(BaseModel):
+    profile: PatientProfile | None = None
     facilities: list[Facility]
     referrals: list[Referral]
     emergencies: list[EmergencyEvent]

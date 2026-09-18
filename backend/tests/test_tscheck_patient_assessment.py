@@ -1,65 +1,53 @@
-"""Patient profile and bounded assessment API checks."""
+"""Persistent patient profile and bounded assessment checks."""
 
 import uuid
 
 
-def _start_assessment(client, symptom: str = "mild headache and fatigue") -> dict:
+def _start(client, symptom="mild headache and fatigue"):
     response = client.post("/assessment/session", json={"symptoms": symptom})
     assert response.status_code == 200, response.text
     return response.json()
 
 
-def _answer(client, session_id: str, answer: str) -> dict:
+def _answer(client, session_id, answer):
     response = client.post("/assessment/message", json={"session_id": session_id, "answer": answer})
     assert response.status_code == 200, response.text
     return response.json()
 
 
-def test_profile_update_persists_health_history(client):
-    suffix = uuid.uuid4().hex[:8]
-    history = f"tscheck-assessment-{suffix} visit note"
-    payload = {
-        "name": "Maya Sharma",
-        "age": 29,
-        "mobile": "+91 98765 43210",
-        "location": "Bengaluru, Karnataka",
-        "emergency_contact": "Arjun Sharma · +91 98765 40001",
-        "existing_conditions": ["Mild asthma"],
-        "allergies": ["Penicillin"],
-        "medicines": ["Salbutamol inhaler · as needed"],
-        "previous_history": [history],
-    }
+def test_patient_profile_update_persists(client, login):
+    login("patient")
+    history = f"verified-demo-history-{uuid.uuid4().hex[:8]}"
+    payload = {"name": "Maya Sharma", "age": 29, "gender": "Female", "mobile": "9876543210", "location": "Bengaluru, Karnataka", "address": "14 Lake View Road, Bengaluru", "emergency_contact": "Arjun Sharma · +91 98765 40001", "blood_group": "O+", "weight_kg": 58, "existing_conditions": ["Mild asthma"], "allergies": ["Penicillin"], "medicines": ["Salbutamol inhaler · as needed"], "previous_history": [history]}
     response = client.put("/patient/profile", json=payload)
     assert response.status_code == 200, response.text
-    body = response.json()
-    assert body["profile_complete"] == True
-    assert history in body["previous_history"]
+    assert response.json()["mobile"] == "+919876543210"
+    assert history in client.get("/dashboard").json()["profile"]["previous_history"]
 
 
-def test_assessment_session_starts_at_first_question(client):
-    session = _start_assessment(client)
-    assert session["complete"] == False
-    assert session["question_index"] == 0
-    assert session["total_questions"] == 3
-    assert session["question"]
-
-
-def test_assessment_advances_and_returns_exact_guidance(client):
-    session = _start_assessment(client)
-    session_id = session["session_id"]
-    second = _answer(client, session_id, "Started yesterday")
-    assert second["complete"] == False
-    assert second["question_index"] == 1
-    third = _answer(client, session_id, "Unchanged")
-    assert third["complete"] == False
-    assert third["question_index"] == 2
-    final = _answer(client, session_id, "No difficulty breathing")
-    assert final["complete"] == True
-    assert final["question_index"] == 3
+def test_routine_assessment_reaches_safe_guidance(client, login):
+    login("patient")
+    session = _start(client)
+    first = _answer(client, session["session_id"], "Today")
+    second = _answer(client, session["session_id"], "Unchanged")
+    final = _answer(client, session["session_id"], "No")
+    assert first["question_index"] == 1
+    assert second["question_index"] == 2
+    assert final["urgency"] == "ROUTINE"
     assert final["guidance"] == "Based on your answers, please consult a doctor."
-    assert final["outcome"] == "NORMAL"
 
 
-def test_assessment_message_unknown_session_returns_404(client):
-    response = client.post("/assessment/message", json={"session_id": "tscheck-nonexistent-session", "answer": "x"})
+def test_emergency_criterion_returns_emergency_guidance(client, login):
+    login("patient")
+    session = _start(client, "chest discomfort")
+    _answer(client, session["session_id"], "Today")
+    _answer(client, session["session_id"], "Getting worse")
+    final = _answer(client, session["session_id"], "Difficulty breathing")
+    assert final["urgency"] == "EMERGENCY"
+    assert "emergency" in final["guidance"].lower()
+
+
+def test_patient_cannot_answer_another_patients_session(client, login):
+    login("patient")
+    response = client.post("/assessment/message", json={"session_id": "unknown", "answer": "No"})
     assert response.status_code == 404, response.text

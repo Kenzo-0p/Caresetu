@@ -45,3 +45,43 @@ async def aclient():
 
 
 # --- app-specific fixtures below this line ---
+
+DEMO_CREDENTIALS = {
+    "patient": ("patient@caresetu.demo", "Patient123!"),
+    "doctor": ("doctor@caresetu.demo", "Doctor123!"),
+    "worker": ("worker@caresetu.demo", "Worker123!"),
+    "hospital_doctor": ("hospital.doctor@caresetu.demo", "Hospital123!"),
+    "hospital_admin": ("hospital.admin@caresetu.demo", "Admin123!"),
+}
+
+
+@pytest.fixture
+def login(client):
+    def _login(role: str) -> dict:
+        client.cookies.clear()
+        email, password = DEMO_CREDENTIALS[role]
+        response = client.post("/auth/login", json={"email": email, "password": password})
+        assert response.status_code == 200, response.text
+        return response.json()
+    return _login
+
+
+@pytest.fixture
+def authorize_doctor(client, login):
+    def _authorize(method: str = "patient_code") -> dict:
+        login("patient")
+        identity = client.get("/patient/identity").json()
+        consent = client.post("/patient/identity/consent-code").json()["consent_code"]
+        values = {
+            "patient_code": identity["patient_code"],
+            "phone": identity["normalized_phone"],
+            "qr": identity["qr_payload"],
+        }
+        login("doctor")
+        preview_response = client.post("/provider/identify", json={"method": method, "value": values[method]})
+        assert preview_response.status_code == 200, preview_response.text
+        preview = preview_response.json()
+        access_response = client.post(f"/provider/access/{preview['access_request_id']}/authorize", json={"consent_code": consent})
+        assert access_response.status_code == 200, access_response.text
+        return access_response.json()
+    return _authorize

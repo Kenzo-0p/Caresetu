@@ -70,6 +70,7 @@ export default defineConfig(async () => {
         "@base-ui/react/tabs",
         "@base-ui/react/use-render",
         "@tanstack/react-query",
+        "@zxing/browser",
         "class-variance-authority",
         "clsx",
         "date-fns",

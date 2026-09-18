@@ -17,7 +17,7 @@ export function statusTone(status: string) {
   if (normalized.includes("emergency") || normalized.includes("ambulance")) {
     return "border-red-200 bg-red-50 text-red-700";
   }
-  if (["Accepted", "Outcome Updated", "verified"].includes(status)) {
+  if (["ACCEPTED", "COMPLETED", "verified"].includes(status)) {
     return "border-emerald-200 bg-emerald-50 text-emerald-700";
   }
   if (status === "unreadable") return "border-red-200 bg-red-50 text-red-700";
@@ -92,7 +92,7 @@ export function FacilityCard({
 }
 
 export function Timeline({ events, testId = "referral-status-timeline" }: { events: EventItem[]; testId?: string }) {
-  const sequence = ["Created", "Sent", "Received", "Accepted", "Rejected", "Redirected", "Arrived", "Outcome Updated"];
+  const sequence = ["DRAFT", "CONFIRMED", "SENT", "RECEIVED", "ACCEPTED", "REJECTED", "REDIRECTED", "ARRIVED", "COMPLETED", "CANCELLED"];
   const visible = events.filter((event) => sequence.includes(event.label));
 
   return (
@@ -104,7 +104,7 @@ export function Timeline({ events, testId = "referral-status-timeline" }: { even
             {index < visible.length - 1 && <div className="mt-1 h-5 w-px bg-teal-100" />}
           </div>
           <div className="min-w-0 pb-1">
-            <p className="text-sm font-semibold text-slate-800">{event.label}</p>
+            <p className="text-sm font-semibold capitalize text-slate-800">{event.label.toLowerCase().replaceAll("_", " ")}</p>
             <p className="text-xs text-slate-500">{formatTime(event.timestamp)}{event.detail ? ` · ${event.detail}` : ""}</p>
           </div>
         </div>

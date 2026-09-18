@@ -1,50 +1,34 @@
-"""SOS dispatch, optional context, destination, and hospital queue checks."""
+"""Immediate, idempotent SOS and selected-hospital delivery checks."""
 
 import uuid
 
 
-def _start_sos(client) -> dict:
-    suffix = uuid.uuid4().hex[:8]
-    response = client.post("/sos", json={"patient_id": "demo-patient-001", "note": f"tscheck-sos-{suffix}"})
+def _start_sos(client, login, key=None):
+    login("patient")
+    response = client.post("/sos", json={"note": "Emergency demo", "idempotency_key": key or f"sos-{uuid.uuid4()}"})
     assert response.status_code == 200, response.text
     return response.json()
 
 
-def _select_facility(client, sos_id: str) -> dict:
-    response = client.post("/sos/select-facility", json={"sos_id": sos_id, "facility_id": "facility-a"})
-    assert response.status_code == 200, response.text
-    return response.json()
+def test_sos_is_immediate_and_idempotent(client, login):
+    key = f"sos-{uuid.uuid4()}"
+    first = _start_sos(client, login, key)
+    second = client.post("/sos", json={"note": "Repeated tap", "idempotency_key": key})
+    assert second.status_code == 200, second.text
+    assert second.json()["event"]["id"] == first["event"]["id"]
+    assert first["event"]["dispatch_status"] == "SIMULATED_DISPATCH"
+    assert "Emergency action initiated" in first["message"]
 
 
-def test_sos_immediate_simulated_dispatch(client):
-    body = _start_sos(client)
-    assert body["event"]["dispatch_status"] == "SIMULATED_DISPATCH"
-    assert "Emergency action initiated" in body["message"]
-    assert len(body["facilities"]) > 0
-    assert all(facility["emergency_ready"] for facility in body["facilities"])
-
-
-def test_sos_optional_context_is_saved(client):
-    body = _start_sos(client)
-    response = client.post(f"/sos/{body['event']['id']}/context", json={"note": "extra emergency context"})
-    assert response.status_code == 200, response.text
-    assert response.json()["note"] == "extra emergency context"
-
-
-def test_sos_facility_selection_creates_emergency_referral(client):
-    body = _start_sos(client)
-    selected = _select_facility(client, body["event"]["id"])
-    assert "Hospital notified" in selected["message"]
-    assert selected["event"]["status"] == "Hospital Alerted"
-    assert selected["event"]["selected_facility_name"] == "Harborview Medical Centre"
-    referral_id = selected["event"]["referral_id"]
-    queue_response = client.get("/hospital/queue")
-    assert queue_response.status_code == 200, queue_response.text
-    matching = [referral for referral in queue_response.json()["referrals"] if referral["id"] == referral_id]
-    assert len(matching) == 1
-    assert matching[0]["emergency"] == True
-
-
-def test_sos_unknown_event_or_facility_returns_404(client):
-    response = client.post("/sos/select-facility", json={"sos_id": "tscheck-nonexistent-sos", "facility_id": "facility-a"})
-    assert response.status_code == 404, response.text
+def test_sos_destination_is_idempotent_and_reaches_hospital(client, login):
+    sos = _start_sos(client, login)
+    payload = {"sos_id": sos["event"]["id"], "facility_id": "facility-a"}
+    first = client.post("/sos/select-facility", json=payload)
+    second = client.post("/sos/select-facility", json=payload)
+    assert first.status_code == 200, first.text
+    assert second.status_code == 200, second.text
+    assert second.json()["event"]["referral_id"] == first.json()["event"]["referral_id"]
+    login("hospital_doctor")
+    queue = client.get("/hospital/queue")
+    assert queue.status_code == 200, queue.text
+    assert any(item["id"] == first.json()["event"]["referral_id"] for item in queue.json()["referrals"])
