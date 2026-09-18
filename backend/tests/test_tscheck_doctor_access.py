@@ -19,7 +19,10 @@ def test_doctor_lookup_with_authorization_returns_protected_context(client):
     body = resp.json()
     assert body["authorization_granted"] is True
     patient = body["patient"]
-    assert patient["secure_id"] == "TECH-PT-001"
+    # The legacy alias TECH-PT-001 is accepted as input for backwards
+    # compatibility, but the app now normalizes/returns the CareSetu
+    # identifier CARE-PT-001 (no user-visible TECHNEXA branding remains).
+    assert patient["secure_id"] == "CARE-PT-001"
     assert patient["name"] == "Maya Sharma"
     assert "Penicillin" in patient["allergies"]
     assert any("Salbutamol" in m for m in patient["medicines"])

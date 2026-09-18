@@ -19,7 +19,7 @@ class PatientProfile(BaseModel):
     model_config = ConfigDict(extra="ignore")
 
     id: str = "demo-patient-001"
-    secure_id: str = "TECH-PT-001"
+    secure_id: str = "CARE-PT-001"
     name: str = "Maya Sharma"
     age: int = 29
     gender: str = "Female"

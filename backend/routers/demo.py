@@ -81,6 +81,9 @@ def default_profile() -> PatientProfile:
 async def get_profile() -> PatientProfile:
     raw = await db.patient_profiles.find_one({"id": "demo-patient-001"})
     if raw:
+        if raw.get("secure_id") == "TECH-PT-001":
+            raw["secure_id"] = "CARE-PT-001"
+            await db.patient_profiles.update_one({"id": "demo-patient-001"}, {"$set": {"secure_id": "CARE-PT-001"}})
         return PatientProfile(**raw)
     profile = default_profile()
     await db.patient_profiles.insert_one(profile.model_dump())
@@ -93,7 +96,7 @@ def parse_model_list(raw_items: list[dict], model: type):
 
 @router.get("/")
 async def root():
-    return {"message": "TECHNEXA demo API ready", "mode": "deterministic_demo"}
+    return {"message": "CareSetu demo API ready", "mode": "deterministic_demo"}
 
 
 @router.get("/demo/state", response_model=DemoState)
@@ -168,7 +171,7 @@ async def doctor_lookup(input: DoctorLookupRequest):
     if not input.authorization_granted:
         raise HTTPException(status_code=403, detail="Patient authorization is required for normal access")
     profile = await get_profile()
-    if input.identifier.lower() not in {profile.secure_id.lower(), profile.mobile.lower(), profile.id.lower()}:
+    if input.identifier.lower() not in {profile.secure_id.lower(), "tech-pt-001", profile.mobile.lower(), profile.id.lower()}:
         raise HTTPException(status_code=404, detail="No demo patient matched that secure ID or phone")
     return DoctorLookupResponse(
         patient=profile,

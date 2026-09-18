@@ -1,4 +1,4 @@
-# TECHNEXA 2026 Smart Healthcare MVP
+# CareSetu Smart Healthcare MVP
 
 ## Purpose
 Patient-first healthcare access and referral demo. It connects patient symptom guidance, doctor-controlled referrals, capability-aware facilities, hospital operations, emergency SOS, and medical document review.
@@ -13,8 +13,8 @@ Patient-first healthcare access and referral demo. It connects patient symptom g
 Mongo collections: `patient_profiles`, `assessments`, `documents`, `referrals`, `emergency_events`. Facilities are safety-reviewed fixed demo data with capability fields. Original document bytes are retained under `backend/uploads`; extraction is deterministic and unverified until review.
 
 ## Key flows
-1. Patient edits profile, starts a three-question bounded assessment, and receives “Based on your answers, please consult a doctor.”
-2. Doctor enters `TECH-PT-001`, explicitly confirms authorization, reviews the patient summary, gets “AI-assisted assessment”, can override it, selects a capability-matched facility, and sends a referral.
+1. Patient edits profile, selects a common symptom card or describes another symptom, answers three follow-ups using one-tap choices or free text, and receives “Based on your answers, please consult a doctor.”
+2. Doctor enters `CARE-PT-001`, explicitly confirms authorization, reviews the patient summary, gets “AI-assisted assessment”, can override it, selects a capability-matched facility, and sends a referral.
 3. Hospital Operations sees emergency events above routine referrals and can accept, mark arrived, and update outcome.
 4. Patient SOS creates and records `SIMULATED_DISPATCH` immediately. Facility selection creates an emergency referral and hospital alert.
 5. PDF/JPG/PNG/WEBP upload preserves the original. Normal filenames yield candidate fields marked `AI extracted — needs verification`; filenames containing `unreadable` produce the safe failure state.

@@ -134,6 +134,29 @@
   h1, h2, h3, h4, button {
     font-family: 'Plus Jakarta Sans Variable', sans-serif;
   }
+  html, body, #root {
+    max-width: 100%;
+    overflow-x: clip;
+  }
+}
+
+[data-testid="documents-card"] [data-testid$="-row"] {
+  min-width: 0;
+  overflow: hidden;
+}
+
+[data-testid="documents-card"] [data-testid$="-row"] > div {
+  min-width: 0;
+  flex-wrap: wrap;
+}
+
+[data-testid="documents-card"] [data-testid$="-row"] span {
+  height: auto;
+  max-width: 100%;
+  white-space: normal;
+  overflow-wrap: anywhere;
+  text-align: left;
+  line-height: 1.25;
 }
 
 @keyframes soft-pulse {

@@ -22,7 +22,7 @@ async def lifespan(app: FastAPI):
     client.close()
 
 
-app = FastAPI(title="TECHNEXA Smart Healthcare Demo", lifespan=lifespan)
+app = FastAPI(title="CareSetu Smart Healthcare Demo", lifespan=lifespan)
 api_router = APIRouter(prefix="/api")
 api_router.include_router(demo_router)
 

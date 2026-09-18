@@ -1,0 +1,47 @@
+{
+  "iteration": 2,
+  "mode": "generate",
+  "summary": "4 new acceptance criteria (CareSetu rebrand, quick-choice symptom UX, mobile stability) covered with 1 new backend pytest file (2 cases) and 4 new named browser checks. Fixed one stale backend assertion in test_tscheck_doctor_access.py that pre-dated the rename. Full backend suite (21 cases, 7 files) and all 12 browser checks (8 prior + 4 new) pass.",
+  "passed": 5,
+  "failed": 0,
+  "retest_needed": false,
+  "action_items": [],
+  "bugs": [],
+  "checks": [
+    {
+      "criterion": "All user-visible product branding is renamed from TECHNEXA to CareSetu",
+      "name": "test_tscheck_branding_caresetu.py",
+      "lane": "backend",
+      "status": "passed",
+      "evidence": "GET /api/ -> 200 {\"message\":\"CareSetu demo API ready\",\"mode\":\"deterministic_demo\"} (contains 'caresetu', no 'technexa'); GET /api/demo/state -> 200, response body contains no 'technexa' substring"
+    },
+    {
+      "criterion": "All user-visible product branding is renamed from TECHNEXA to CareSetu",
+      "name": "branding-caresetu-no-technexa",
+      "lane": "browser",
+      "status": "passed",
+      "evidence": "Page title 'CareSetu · Smart Healthcare Demo' contains CareSetu / no TECHNEXA; header shows 'CareSetu' brand mark; full page innerText contains no 'technexa' substring. Verified once on localhost and once through APP_URL (https://attachment-tool-3.preview.emergentagent.com) ingress."
+    },
+    {
+      "criterion": "The first symptom step offers fast common choices plus a flexible custom path",
+      "name": "symptom-quick-first-step-choices",
+      "lane": "browser",
+      "status": "passed",
+      "evidence": "After tapping Check My Symptoms, quick-choice panel shows Headache/Fever or chills/Stomach discomfort/Tired or weak + 'Describe something else'; tapping 'Describe something else' focuses symptom-description-input without starting an assessment; tapping 'Headache' (a common choice) immediately opens assessment-question-card (question 1)."
+    },
+    {
+      "criterion": "Every symptom follow-up offers one-tap choices while retaining Other text input",
+      "name": "symptom-followups-quick-choices-to-guidance",
+      "lane": "browser",
+      "status": "passed",
+      "evidence": "Q1 shows Today/Yesterday/2-7 days ago/More than a week + Other; Q2 shows Getting better/Unchanged/Getting worse/Comes and goes + Other; Q3 shows No/Difficulty breathing/Feeling faint/Both + Other; choosing one tap per question with zero manual typing reaches assessment-normal-result containing 'please consult a doctor'."
+    },
+    {
+      "criterion": "The optimized patient assessment is mobile accessible and stable",
+      "name": "mobile-assessment-stable-no-overflow",
+      "lane": "browser",
+      "status": "passed",
+      "evidence": "At 390x844, document.documentElement.scrollWidth - clientWidth <= 1 at every step (panel open, and after each of 3 quick-tap answers, and at final guidance); quick-choice button touch target height >= 40px; zero requestfailed events and zero HTTP responses >=400 captured across the full choice-only journey."
+    }
+  ]
+}
